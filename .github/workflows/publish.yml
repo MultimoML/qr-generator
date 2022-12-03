@@ -23,4 +23,4 @@ jobs:
         with:
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/multimoml/qr-generator:v0.1.0,ghcr.io/multimoml/qr-generator:latest
+          tags: ghcr.io/multimoml/qr-generator:v1.0.0,ghcr.io/multimoml/qr-generator:latest
