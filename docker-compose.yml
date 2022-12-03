@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+
+  qr-generator:
+    image: multimoml/qr-generator:latest
+    container_name: qr-generator
+    restart: unless-stopped
+    networks:
+      - traefik-proxy
+    ports:
+      - "6002:6002"
+    environment:
+      ENVIRONMENT: "prod"
+      PORT: 6002
+    labels:
+      traefik.enable: true
+      traefik.docker.network: traefik-proxy # needed if you have multiple networks and no default
+      traefik.http.routers.qr-generator.rule: Host(`${DOMAIN}`) && PathPrefix(`/qr`)
+      traefik.http.routers.qr-generator.entrypoints: https
+      traefik.http.services.qr-generator.loadbalancer.server.port: 6002
+
+networks:
+  traefik-proxy:
+    external: true
