@@ -3,7 +3,9 @@
 Microservice for generating QR codes for products.
 
 Available endpoints:
-- `/qr`: returns a png image of a QR code describing a products (currently lists number of products in the database)
+- `/live`: Liveliness check
+- `/ready`: Readiness check
+- `/generate`: Generates a QR code for a product
 
 Branches:
 - `main`: Contains stable, tagged releases

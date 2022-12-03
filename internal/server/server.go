@@ -23,19 +23,56 @@ func Run(_ context.Context) {
 	router := httprouter.New()
 
 	// Endpoints
-	router.GET("/qr", QR)
+	router.GET("/qr/live", Liveliness)
+	router.GET("/qr/ready", Readiness)
+	router.GET("/qr/", GenerateQRCode)
 
 	log.Fatal(http.ListenAndServe(":6002", router))
 }
 
-func QR(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+func Liveliness(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	w.WriteHeader(http.StatusOK)
+	if _, err := fmt.Fprint(w, "I'm alive!\n"); err != nil {
+		log.Println(err)
+	}
+}
+
+func Readiness(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	qrApi := "https://api.qrserver.com"
+	dispatcher := "http://dispatcher:6001/products/live"
+	amIReady := true
+
+	// Call QR API to check if it's ready
+	if res, err := http.Get(qrApi); err != nil || res.StatusCode != http.StatusOK {
+		amIReady = false
+	}
+
+	// Call Dispatcher microservice to check if it's ready
+	if res, err := http.Get(dispatcher); err != nil || res.StatusCode != http.StatusOK {
+		amIReady = false
+	}
+
+	if amIReady {
+		w.WriteHeader(http.StatusOK)
+		if _, err := fmt.Fprint(w, "I'm ready!\n"); err != nil {
+			log.Println(err)
+		}
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		if _, err := fmt.Fprint(w, "I'm NOT ready!\n"); err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func GenerateQRCode(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	qrApi := "https://api.qrserver.com/v1/create-qr-code/?size=500x500&data="
 
 	numProducts := 0
 	var products []model.Product
 
 	// Call Dispatcher microservice to get number of products in DB
-	res, err := http.Get("http://dispatcher:6001/products")
+	res, err := http.Get("http://dispatcher:6001/products/v1/all")
 	if err != nil {
 		log.Println(err)
 	}
