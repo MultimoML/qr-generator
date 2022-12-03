@@ -25,7 +25,7 @@ func Run(_ context.Context) {
 	// Endpoints
 	router.GET("/qr/live", Liveliness)
 	router.GET("/qr/ready", Readiness)
-	router.GET("/qr/", GenerateQRCode)
+	router.GET("/qr/generate", GenerateQRCode)
 
 	log.Fatal(http.ListenAndServe(":6002", router))
 }
@@ -38,18 +38,20 @@ func Liveliness(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 }
 
 func Readiness(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	qrApi := "https://api.qrserver.com"
+	qrApi := "https://api.qrserver.com/v1/create-qr-code/?size=10x10&data=1"
 	dispatcher := "http://dispatcher:6001/products/live"
 	amIReady := true
 
 	// Call QR API to check if it's ready
 	if res, err := http.Get(qrApi); err != nil || res.StatusCode != http.StatusOK {
 		amIReady = false
+		log.Println("QR API is not ready: ", err)
 	}
 
 	// Call Dispatcher microservice to check if it's ready
 	if res, err := http.Get(dispatcher); err != nil || res.StatusCode != http.StatusOK {
 		amIReady = false
+		log.Println("Dispatcher microservice is not ready: ", err)
 	}
 
 	if amIReady {
