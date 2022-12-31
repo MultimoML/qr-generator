@@ -7,7 +7,9 @@ RUN go mod download && go mod verify
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o /qr-generator cmd/server/main.go
+RUN go install github.com/swaggo/swag/cmd/swag@latest && swag init
+
+RUN CGO_ENABLED=0 go build -o /qr-generator main.go
 
 FROM gcr.io/distroless/static-debian11:latest
 

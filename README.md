@@ -1,21 +1,30 @@
 # QR Generator
 
-Microservice for generating QR codes for products.
+Microservice for managing grocery items.
 
 Available endpoints:
-- `/live`: Liveliness check
-- `/ready`: Readiness check
-- `/generate`: Generates a QR code for a product
+- [`/live`](https://multimo.ml/qr/live): Liveliness check
+- [`/ready`](https://multimo.ml/qr/ready): Readiness check
+- [`/:id`](https://multimo.ml/qr/v1/:id): Generates a QR code for a product
 
 Branches:
-- `main`: Contains stable, tagged releases
-- `dev`: Contains latest development version
+- [`main`](https://github.com/MultimoML/qr-generator/tree/main): Contains latest development version
+- [`prod`](https://github.com/MultimoML/qr-generator/tree/prod): Contains stable, tagged releases
 
 ## Setup/installation
 
-To run the microservice using Docker Compose run `make compose`.
+Prerequisites:
+- [Go](https://go.dev/)
+- [Docker](https://www.docker.com/)
 
-To see other available options run `make help`.
+Example usage:
+- See all available options: `make help`
+- Run microservice in a container: `make run`
+- Release a new version: `make release ver=x.y.z`
+
+All work should be done on `main`, `prod` should never be checked out or manually edited.
+When releasing, the changes are merged into `prod` and both branches are pushed.
+A GitHub Action workflow will then build and publish the image to GHCR, and deploy it to Kubernetes.
 
 ## License
 

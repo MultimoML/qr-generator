@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qr-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qr-generator
+  template:
+    metadata:
+      labels:
+        app: qr-generator
+    spec:
+      containers:
+        - name: qr-generator
+          image: ghcr.io/multimoml/qr-generator:latest
+          env:
+            - name: ACTIVE_ENV
+              value: "prod"
+            - name: PORT
+              value: "6002"
+            - name: CONFIG_SERVER
+              value: "https://configs.multimo.ml"
+          ports:
+            - containerPort: 6002
+              name: server
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /products/live
+              port: server
+            initialDelaySeconds: 10
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /products/ready
+              port: server
+            initialDelaySeconds: 10
+            periodSeconds: 3
+      terminationGracePeriodSeconds: 10
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: qr-generator
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6002
+      targetPort: server
+  selector:
+    app: qr-generator

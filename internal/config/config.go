@@ -7,17 +7,36 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func Environment() {
-	switch os.Getenv("ENVIRONMENT") {
+type Config struct {
+	Port         string
+	ConfigServer string
+}
+
+func LoadConfig() *Config {
+	env := os.Getenv("ACTIVE_ENV")
+	if env == "" {
+		env = "dev"
+	}
+
+	switch env {
 	case "dev":
 		if err := godotenv.Load(); err != nil {
-			log.Fatal("Error loading environment file")
-		} else {
-			log.Println("Loaded dev environment")
+			log.Fatal("Error loading .env file")
 		}
 	case "prod":
-		log.Println("Loaded prod environment")
 	default:
-		log.Fatal("Environment variable ENVIRONMENT is not set or set to wrong value")
+		log.Fatal("Unknown environment")
+	}
+
+	log.Println("Loaded environment variables for", env)
+
+	port := "6002"
+	if os.Getenv("PORT") != "" {
+		port = os.Getenv("PORT")
+	}
+
+	return &Config{
+		ConfigServer: os.Getenv("CONFIG_SERVER"),
+		Port:         port,
 	}
 }

@@ -2,101 +2,157 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "github.com/multimoml/qr-generator/docs"
 	"github.com/multimoml/qr-generator/internal/config"
-	"github.com/multimoml/qr-generator/internal/model"
 )
+
+var sConfig *config.Config
 
 func Run(_ context.Context) {
 	// Load environment variables
-	config.Environment()
+	sConfig = config.LoadConfig()
 
-	// Start HTTP server
-	router := httprouter.New()
+	// Set up router
+	router := gin.Default()
 
 	// Endpoints
-	router.GET("/qr/live", Liveliness)
-	router.GET("/qr/ready", Readiness)
-	router.GET("/qr/generate", GenerateQRCode)
+	q := router.Group("/qr")
+	{
+		q.GET("/live", Liveness)
+		q.GET("/ready", Readiness)
+		q.GET("/v1/:id", Generate)
 
-	log.Fatal(http.ListenAndServe(":6002", router))
-}
-
-func Liveliness(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	w.WriteHeader(http.StatusOK)
-	if _, err := fmt.Fprint(w, "I'm alive!\n"); err != nil {
-		log.Println(err)
+		// Redirect /openapi to /openapi/index.html
+		q.GET("/", func(c *gin.Context) {
+			c.Redirect(http.StatusMovedPermanently, "/qr/openapi/index.html")
+		})
+		q.GET("/openapi", func(c *gin.Context) {
+			c.Redirect(http.StatusMovedPermanently, "/qr/openapi/index.html")
+		})
+		q.GET("/openapi/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
+
+	// Start HTTP server
+	log.Fatal(router.Run(fmt.Sprintf(":%s", sConfig.Port)))
 }
 
-func Readiness(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+// Liveness is a simple endpoint to check if the server is alive
+// @Summary Get liveness status of the microservice
+// @Description Get liveness status of the microservice
+// @Tags Kubernetes
+// @Success 200 {string} string
+// @Router /qr/live [get]
+func Liveness(c *gin.Context) {
+	// Check if the config value 'broken' is set to 1
+	res, err := http.Get(sConfig.ConfigServer + "/broken")
+
+	// If the config server is not available, treat it as not broken (default to alive)
+	if err == nil {
+		value, err := io.ReadAll(res.Body)
+		if err == nil && string(value) == "1" {
+			c.String(http.StatusServiceUnavailable, "dead")
+			return
+		}
+	}
+
+	c.String(http.StatusOK, "alive")
+}
+
+// Readiness is a simple endpoint to check if the server is ready
+// @Summary Get readiness status of the microservice
+// @Description Get readiness status of the microservice
+// @Tags Kubernetes
+// @Success 200 {string} string
+// @Failure 503 {string} string
+// @Router /qr/ready [get]
+func Readiness(c *gin.Context) {
 	qrApi := "https://api.qrserver.com/v1/create-qr-code/?size=10x10&data=1"
-	dispatcher := "http://dispatcher:6001/products/live"
-	amIReady := true
+	dispatcher := "http://dispatcher:6001"
+	iAmReady := true
+
+	// If using dev environment access local dispatcher
+	if os.Getenv("ACTIVE_ENV") == "dev" {
+		dispatcher = "http://localhost:6001"
+	}
 
 	// Call QR API to check if it's ready
 	if res, err := http.Get(qrApi); err != nil || res.StatusCode != http.StatusOK {
-		amIReady = false
+		iAmReady = false
 		log.Println("QR API is not ready: ", err)
 	}
 
 	// Call Dispatcher microservice to check if it's ready
-	if res, err := http.Get(dispatcher); err != nil || res.StatusCode != http.StatusOK {
-		amIReady = false
+	if res, err := http.Get(dispatcher + "/products/ready"); err != nil || res.StatusCode != http.StatusOK {
+		iAmReady = false
 		log.Println("Dispatcher microservice is not ready: ", err)
 	}
 
-	if amIReady {
-		w.WriteHeader(http.StatusOK)
-		if _, err := fmt.Fprint(w, "I'm ready!\n"); err != nil {
-			log.Println(err)
-		}
+	if iAmReady {
+		c.String(http.StatusOK, "ready")
 	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		if _, err := fmt.Fprint(w, "I'm NOT ready!\n"); err != nil {
-			log.Println(err)
-		}
+		c.String(http.StatusServiceUnavailable, "not ready")
 	}
 }
 
-func GenerateQRCode(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	qrApi := "https://api.qrserver.com/v1/create-qr-code/?size=500x500&data="
+// Generate generates a QR code
+// @Summary Generate a QR code
+// @Description Generate a QR code
+// @Produce  image/png
+// @Param id path string true "Product ID"
+// @Success 200 {string} string
+// @Failure 404 {string} string
+// @Failure 500 {string} string
+// @Tags Service
+// @Router /qr/v1/{id} [get]
+func Generate(c *gin.Context) {
+	id := c.Param("id")
+	qrApi := "https://api.qrserver.com/v1/create-qr-code/?size=256x256&data="
+	dispatcher := "http://dispatcher:6001"
 
-	numProducts := 0
-	var products []model.Product
+	// If using dev environment access local dispatcher
+	if os.Getenv("ACTIVE_ENV") == "dev" {
+		dispatcher = "http://localhost:6001"
+	}
 
-	// Call Dispatcher microservice to get number of products in DB
-	res, err := http.Get("http://dispatcher:6001/products/v1/all")
+	// Get product with the given ID from Dispatcher
+	res, err := http.Get(dispatcher + "/products/v1/" + id)
 	if err != nil {
 		log.Println(err)
+		c.String(http.StatusNotFound, "Failed to get product: 1")
+		return
 	}
 
-	// Decode JSON response
-	if err = json.NewDecoder(res.Body).Decode(&products); err != nil {
+	// Read the response body
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
 		log.Println(err)
+		c.String(http.StatusNotFound, "Failed to get product: 2")
+		return
 	}
-	numProducts = len(products)
 
 	// Call QR API to generate QR code
-	data := fmt.Sprintf("Number of products in database: %d", numProducts)
-	log.Println(data)
-
-	res, err = http.Get(qrApi + url.QueryEscape(data))
+	res, err = http.Get(qrApi + url.PathEscape(string(body)))
 	if err != nil {
 		log.Println(err)
+		c.String(http.StatusInternalServerError, "Failed to generate QR code: 1")
+		return
 	}
 
-	w.Header().Set("Content-Type", "image/png")
-	w.WriteHeader(http.StatusOK)
-	if _, err := io.Copy(w, res.Body); err != nil {
+	c.Header("Content-Type", "image/png")
+	c.Status(http.StatusOK)
+	if _, err = io.Copy(c.Writer, res.Body); err != nil {
 		log.Println(err)
+		c.String(http.StatusInternalServerError, "Failed to generate QR code: 2")
 	}
 }

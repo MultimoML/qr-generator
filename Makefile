@@ -1,41 +1,37 @@
 ver =
 
-all: help
+all: build
 
-.PHONY: help run build compose build-deploy tag release
+.PHONY: help server run build tag tidy release
 
-help: ## Prints the help menu
+help: ## Print the help menu
 	@echo Usage: make [command]
 	@echo
 	@echo Commands:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf"  \033[36m%-30s\033[0m%s\n", $$1, $$2}'
 
+server: ## Run the microservice locally
+	swag init
+	go run main.go
 
-run: ## Runs the microservice
-	ENVIRONMENT=dev go run cmd/server/main.go
+run: build ## Run the microservice in a container
+	docker run -p 6002:6002 -v $(shell pwd)/.env:/.env -d ghcr.io/multimoml/qr-generator:latest
 
-build: ## Builds the Docker image
-    ifeq (, $(shell groups | grep docker))
-		sudo docker build -t multimoml/qr-generator:latest .
-    else
-		docker build -t multimoml/qr-generator:latest .
-    endif
+build: tidy ## Build the Docker image
+	docker build -t ghcr.io/multimoml/qr-generator:latest .
 
-compose: ## Deploy the microservice using Docker Compose
-    ifeq (, $(shell groups | grep docker))
-		sudo docker-compose -f docker-compose.yml --env-file .env up -d --force-recreate
-    else
-		docker-compose -f docker-compose.yml --env-file .env up -d --force-recreate
-    endif
+push: build ## Manually push the Docker image
+	docker push ghcr.io/multimoml/qr-generator:latest
 
-build-deploy: build compose ## Builds and deploys the microservice
+deploy: push ## Manually deploy the microservice to the Kubernetes cluster
+	kubectl apply -f k8s/deployment.yaml
 
-tag: ## Updates the project version and creates a Git tag with a changelog
+tag: ## Update the project version and create a Git tag with a changelog
     ifndef ver
 		git tag -l
     else
-		sed -i 's/:v[0-9.]*/:v'$(ver)'/' .github/workflows/publish.yml
+		sed -i 's/:v[0-9.]*/:v'$(ver)'/' .github/workflows/publish.yaml
 
 		# Commit all changed files
 		git add .
@@ -48,5 +44,9 @@ tag: ## Updates the project version and creates a Git tag with a changelog
 		rm changelog.txt
     endif
 
+tidy: ## Update dependencies
+	go mod tidy
+
 release: tag ## Create a new release and push it
-	git push --follow-tags
+	git fetch . main:prod
+	git push --follow-tags origin main prod
