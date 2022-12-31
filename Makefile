@@ -25,13 +25,13 @@ push: build ## Manually push the Docker image
 	docker push ghcr.io/multimoml/qr-generator:latest
 
 deploy: push ## Manually deploy the microservice to the Kubernetes cluster
-	kubectl apply -f k8s/deployment.yaml
+	kubectl apply -f k8s/deployment.yml
 
 tag: ## Update the project version and create a Git tag with a changelog
     ifndef ver
 		git tag -l
     else
-		sed -i 's/:v[0-9.]*/:v'$(ver)'/' .github/workflows/publish.yaml
+		sed -i 's/:v[0-9.]*/:v'$(ver)'/' .github/workflows/publish.yml
 
 		# Commit all changed files
 		git add .
