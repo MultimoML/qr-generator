@@ -28,7 +28,7 @@ jobs:
         with:
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/multimoml/qr-generator:v1.0.4,ghcr.io/multimoml/qr-generator:latest
+          tags: ghcr.io/multimoml/qr-generator:v1.1.0,ghcr.io/multimoml/qr-generator:latest
 
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
