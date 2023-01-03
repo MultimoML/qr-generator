@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Port         string
-	ConfigServer string
+	Port             string
+	ConfigServer     string
+	ConfigServerPort string
 }
 
 func LoadConfig() *Config {
@@ -36,7 +37,8 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		ConfigServer: os.Getenv("CONFIG_SERVER"),
-		Port:         port,
+		ConfigServer:     os.Getenv("CONFIG_SERVER"),
+		ConfigServerPort: os.Getenv("CONFIG_SERVER_PORT"),
+		Port:             port,
 	}
 }

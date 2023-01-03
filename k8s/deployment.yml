@@ -21,24 +21,25 @@ spec:
             - name: PORT
               value: "6002"
             - name: CONFIG_SERVER
-              value: "https://configs.multimo.ml"
+              value: "http://multimo.dedyn.io"
+            - name: CONFIG_SERVER_PORT
+              value: "30000"
           ports:
             - containerPort: 6002
               name: server
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /products/live
+              path: /qr/live
               port: server
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 3
           readinessProbe:
             httpGet:
-              path: /products/ready
+              path: /qr/ready
               port: server
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 3
-      terminationGracePeriodSeconds: 10
 
 ---
 
@@ -53,3 +54,22 @@ spec:
       targetPort: server
   selector:
     app: qr-generator
+
+---
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: qr-generator
+  namespace: default
+
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - match: Host(`multimo.ml`) && PathPrefix(`/qr/`)
+      kind: Rule
+      services:
+        - name: qr-generator
+          port: 6002

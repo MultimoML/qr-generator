@@ -40,7 +40,7 @@ tag: ## Update the project version and create a Git tag with a changelog
 		git commit -qm "Bump project version to $(ver)"
 		printf "Release v$(ver)\n\nChangelog:\n" > changelog.txt
 		git log $(shell git describe --tags --abbrev=0)..HEAD~1 --pretty=format:"  - %s" >> changelog.txt
-		git tag -asF changelog.txt v$(ver)
+		git tag -aF changelog.txt v$(ver)
 		rm changelog.txt
     endif
 
