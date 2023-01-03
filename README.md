@@ -5,7 +5,7 @@ Microservice for managing grocery items.
 Available endpoints:
 - [`/live`](https://multimo.ml/qr/live): Liveliness check
 - [`/ready`](https://multimo.ml/qr/ready): Readiness check
-- [`/:id`](https://multimo.ml/qr/v1/:id): Generates a QR code for a product
+- [`/v1/:id`](https://multimo.ml/qr/v1/:id): Generates a QR code for a product
 
 Branches:
 - [`main`](https://github.com/MultimoML/qr-generator/tree/main): Contains latest development version
