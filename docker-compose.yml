@@ -21,7 +21,7 @@ services:
       traefik.docker.network: traefik-proxy # needed if you have multiple networks and no default
       traefik.http.routers.qr-generator.rule: Host(`${DOMAIN}`) && PathPrefix(`/qr/`)
       traefik.http.routers.qr-generator.entrypoints: https
-      traefik.http.services.qr-generator.loadbalancer.server.port: 6001
+      traefik.http.services.qr-generator.loadbalancer.server.port: 6002
     volumes:
       - ./.env:/.env
 
