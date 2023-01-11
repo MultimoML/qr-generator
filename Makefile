@@ -15,11 +15,19 @@ server: ## Run the microservice locally
 	swag init
 	go run main.go
 
-run: build ## Run the microservice in a container
-	docker run -p 6002:6002 -v $(shell pwd)/.env:/.env -d ghcr.io/multimoml/qr-generator:latest
+run: ## Run the microservice in a container
+    ifeq (, $(shell groups | grep docker))
+		sudo docker run -p 6001:6001 -v $(shell pwd)/.env:/.env -d ghcr.io/multimoml/qr-generator:latest
+    else
+		docker run -p 6001:6001 -v $(shell pwd)/.env:/.env -d ghcr.io/multimoml/qr-generator:latest
+    endif
 
 build: tidy ## Build the Docker image
-	docker build -t ghcr.io/multimoml/qr-generator:latest .
+    ifeq (, $(shell groups | grep docker))
+		sudo docker build -t ghcr.io/multimoml/qr-generator:latest .
+    else
+		docker build -t ghcr.io/multimoml/qr-generator:latest .
+    endif
 
 push: build ## Manually push the Docker image
 	docker push ghcr.io/multimoml/qr-generator:latest
